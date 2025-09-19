@@ -1,18 +1,16 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { VideoIcon, BrainCircuitIcon, ArrowRightIcon } from "lucide-react"
+import { VideoIcon, BrainCircuitIcon, ArrowRightIcon, PlayIcon, ListTodoIcon } from "lucide-react"
 
 export function HeroSection() {
   const [meetingUrl, setMeetingUrl] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [isProcessingBot, setIsProcessingBot] = useState(false)
+  const [isProcessingJira, setIsProcessingJira] = useState(false)
   const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const extractMeetingDetails = (url: string) => {
     try {
@@ -32,12 +30,11 @@ export function HeroSection() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const makeApiCall = async (buttonType: string) => {
     if (!meetingUrl.trim()) return
 
-    setIsProcessing(true)
-    setError(null)
+    const setProcessing = buttonType === "bot" ? setIsProcessingBot : setIsProcessingJira
+    setProcessing(true)
     setResult(null)
 
     try {
@@ -50,13 +47,12 @@ export function HeroSection() {
 
       console.log("[v0] Extracted meeting details:", { meeting_id, meeting_password })
 
-      // Make API request
       const response = await fetch("https://hackathon.shai.pro/api/workflows/run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization:
-            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIzZDlhYjg3OC0zNDRmLTQ4YWUtOWU2My1mNDM1ZjA5NjYwYTYiLCJzdWIiOiJXZWIgQVBJIFBhc3Nwb3J0IiwiYXBwX2lkIjoiM2Q5YWI4NzgtMzQ0Zi00OGFlLTllNjMtZjQzNWYwOTY2MGE2IiwiYXBwX2NvZGUiOiJraEt5MkhHeVI0RzJOaWI3IiwiZW5kX3VzZXJfaWQiOiI5ZTcyZTczOS04OTgxLTQ0YjUtOWU3Yy00ZmRiMzllNWU0MWIifQ.wDF826KJswCt0FAHdKHxKTwsGjEdRZHhm5TBw-JUnuc",
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJiZmE1M2U5Ny1mMTYyLTRhNTgtOWE1Yi0xMTUyMWYyMmRiMzEiLCJzdWIiOiJXZWIgQVBJIFBhc3Nwb3J0IiwiYXBwX2lkIjoiYmZhNTNlOTctZjE2Mi00YTU4LTlhNWItMTE1MjFmMjJkYjMxIiwiYXBwX2NvZGUiOiJCUzJtd3I5VTNTSThKZW5QIiwiZW5kX3VzZXJfaWQiOiI4ZDIzYWZhMC0wNzRjLTQ1NmMtYTM1Mi1hZTUzZjQ5ZmRhNGUifQ.mF3hm0vCmZSExnFi119DntsPFErnWLPOVnioeyIY22s",
         },
         body: JSON.stringify({
           inputs: {
@@ -73,14 +69,17 @@ export function HeroSection() {
 
       const data = await response.text()
       console.log("[v0] API response:", data)
-      setResult("Meeting processing started successfully!")
+
+      setResult(buttonType === "bot" ? "Bot added to meeting successfully!" : "Jira tasks created successfully!")
     } catch (error) {
-      console.error("[v0] Error processing meeting:", error)
-      setError(error instanceof Error ? error.message : "An unexpected error occurred")
+      console.error("[v0] Error processing request:", error)
     } finally {
-      setIsProcessing(false)
+      setProcessing(false)
     }
   }
+
+  const handleAddBot = () => makeApiCall("bot")
+  const handleCreateJiraTasks = () => makeApiCall("jira")
 
   return (
     <section className="relative py-20 px-4 overflow-hidden">
@@ -104,9 +103,8 @@ export function HeroSection() {
             </p>
           </div>
 
-          {/* Main input form */}
           <Card className="p-8 max-w-2xl mx-auto bg-card border-border">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="meeting-url" className="text-sm font-medium text-foreground">
                   Zoom Meeting Link
@@ -122,35 +120,52 @@ export function HeroSection() {
                 />
               </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full h-12 text-lg bg-accent hover:bg-accent/90 text-accent-foreground"
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-accent-foreground mr-2" />
-                    Processing Meeting...
-                  </>
-                ) : (
-                  <>
-                    Process Now
-                    <ArrowRightIcon className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-            </form>
+              <div className="space-y-4">
+                <Button
+                  onClick={handleAddBot}
+                  size="lg"
+                  className="w-full h-12 text-lg bg-accent hover:bg-accent/90 text-accent-foreground"
+                  disabled={isProcessingBot || !meetingUrl.trim()}
+                >
+                  {isProcessingBot ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-accent-foreground mr-2" />
+                      Adding Bot to Meeting...
+                    </>
+                  ) : (
+                    <>
+                      <PlayIcon className="mr-2 h-5 w-5" />
+                      Add Bot to Meeting
+                      <ArrowRightIcon className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={handleCreateJiraTasks}
+                  size="lg"
+                  className="w-full h-12 text-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={isProcessingJira || !meetingUrl.trim()}
+                >
+                  {isProcessingJira ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2" />
+                      Creating Jira Tasks...
+                    </>
+                  ) : (
+                    <>
+                      <ListTodoIcon className="mr-2 h-5 w-5" />
+                      Create Jira Tasks
+                      <ArrowRightIcon className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
 
             {result && (
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800 text-sm">{result}</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{error}</p>
               </div>
             )}
 
